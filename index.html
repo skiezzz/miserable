@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahasiswa vs Tugas</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fefefe;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: linear-gradient(#a1c4fd, #c2e9fb);
+      border: 2px solid #444;
+    }
+    #info {
+      text-align: center;
+      padding: 1rem;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: rgba(0,0,0,0.5);
+      color: white;
+      font-size: 2rem;
+      z-index: 10;
+    }
+    #tiaImut {
+      font-size: 12px;
+      color: #333;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h1>🎓 Mahasiswa vs Tugas 📄</h1>
+    <p>Skor: <span id="score">0</span></p>
+    <p>⬆️ Tekan layar atau ↑ untuk lompat</p>
+  </div>
+  <div id="overlay">Tekan Spasi atau Layar untuk Mulai</div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="tiaImut">tia imut</div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+
+    const mahasiswa = {
+      x: 50,
+      y: 300,
+      width: 40, // hitbox lebih kecil
+      height: 40, // hitbox lebih kecil
+      vy: 0,
+      gravity: 1.0, // lebih ringan
+      jumpForce: -25, // lebih tinggi agar lebih melambung
+      grounded: true
+    };
+
+    let tugasList = [];
+    let skor = 0;
+    let gameRunning = false;
+    let lastSpawn = 0;
+    let backgroundOffset = 0;
+
+    function spawnTugas() {
+      const tugas = {
+        x: canvas.width,
+        y: canvas.height - 50,
+        width: 30,
+        height: 30,
+        speed: 3,
+        passed: false
+      };
+      tugasList.push(tugas);
+    }
+
+    function drawBackground() {
+      const patternWidth = canvas.width;
+      ctx.fillStyle = "#c2e9fb";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#a1c4fd";
+      ctx.fillRect(backgroundOffset, 0, patternWidth, canvas.height);
+      ctx.fillRect(backgroundOffset - patternWidth, 0, patternWidth, canvas.height);
+    }
+
+    function drawMahasiswa() {
+      ctx.font = "36px serif";
+      ctx.fillText("🎓", mahasiswa.x, mahasiswa.y + mahasiswa.height);
+    }
+
+    function drawTugas() {
+      tugasList.forEach(tugas => {
+        ctx.font = "32px serif";
+        ctx.fillText("📄", tugas.x, tugas.y + tugas.height);
+      });
+    }
+
+    function update() {
+      mahasiswa.vy += mahasiswa.gravity;
+      mahasiswa.y += mahasiswa.vy;
+
+      if (mahasiswa.y + mahasiswa.height >= canvas.height - 20) {
+        mahasiswa.y = canvas.height - mahasiswa.height - 20;
+        mahasiswa.grounded = true;
+      } else {
+        mahasiswa.grounded = false;
+      }
+
+      tugasList.forEach(tugas => tugas.x -= tugas.speed);
+      tugasList = tugasList.filter(tugas => tugas.x + tugas.width > 0);
+
+      tugasList.forEach(tugas => {
+        if (
+          mahasiswa.x < tugas.x + tugas.width &&
+          mahasiswa.x + mahasiswa.width > tugas.x &&
+          mahasiswa.y < tugas.y + tugas.height &&
+          mahasiswa.y + mahasiswa.height > tugas.y
+        ) {
+          alert("Game Over! Skor: " + Math.floor(skor / 60));
+          document.location.reload();
+        }
+
+        if (!tugas.passed && tugas.x + tugas.width < mahasiswa.x) {
+          tugas.passed = true;
+          skor += 60;
+        }
+      });
+
+      backgroundOffset -= 2;
+      if (backgroundOffset <= -canvas.width) backgroundOffset = 0;
+
+      document.getElementById("score").innerText = Math.floor(skor / 60);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+      drawMahasiswa();
+      drawTugas();
+    }
+
+    function loop(timestamp) {
+      if (!gameRunning) return;
+      update();
+      draw();
+      if (timestamp - lastSpawn > 1500) {
+        spawnTugas();
+        lastSpawn = timestamp;
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      if (!gameRunning) {
+        gameRunning = true;
+        overlay.style.display = "none";
+        requestAnimationFrame(loop);
+      } else if (mahasiswa.grounded) {
+        mahasiswa.vy = mahasiswa.jumpForce;
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        startGame();
+      }
+    });
+
+    canvas.addEventListener("touchstart", startGame);
+  </script>
+</body>
+</html>
